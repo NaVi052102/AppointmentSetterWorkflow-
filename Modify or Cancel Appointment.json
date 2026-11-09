@@ -1,0 +1,880 @@
+{
+  "name": "Modify or Cancel Appointment",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "modify-or-cancel-appointment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9c94f466-ca76-4c39-b4e8-03f955749371",
+      "name": "Vapi Webhook: Modify or Cancel Appointment",
+      "webhookId": "aa471c76-ab1f-4268-be53-a4d7cf41e94f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nconst body = inputData.body || inputData || {};\nconst message = body.message || {};\nconst toolCall = message.toolCalls?.[0] || {};\n\n// Safely handle Vapi arguments whether passed as object or JSON string\nlet args = toolCall.function?.arguments || body || {};\nif (typeof args === 'string') {\n  try {\n    args = JSON.parse(args);\n  } catch (e) {\n    args = {};\n  }\n}\n\n// Standardize phone number\nconst rawPhone = message.customer?.number || args.phone || args.phone_number || body.phone || body.phone_number || \"\";\nlet phone = rawPhone.replace(/\\D/g, '');\nif (phone.startsWith('639') && phone.length === 12) {\n  phone = '0' + phone.substring(2);\n} else if (phone.startsWith('9') && phone.length === 10) {\n  phone = '0' + phone;\n}\n\n// Identify action type\nconst rawAction = (args.action || body.action || \"\").toLowerCase();\nconst action = rawAction.includes(\"cancel\") ? \"CANCEL\" : \"RESCHEDULE\";\n\nreturn [{\n  json: {\n    toolCallId: toolCall.id || \"call_mock_modify_123\",\n    action: action,\n    appointment_id: args.appointment_id || args.appointmentId || body.appointment_id || body.appointmentId || \"\",\n    customer_id: args.customer_id || args.customerId || body.customer_id || body.customerId || \"\",\n    phone: phone.trim(),\n    new_date: args.new_date || args.newDate || \"\",\n    new_time: args.new_time || args.newTime || \"\",\n    new_end_time: args.new_end_time || args.newEndTime || \"\",\n    new_purpose: args.new_purpose || args.purpose || body.new_purpose || body.purpose || \"\",\n    reason: args.reason || \"Customer requested change\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "357c1b84-0d98-490f-8deb-a26e0c955ce1",
+      "name": "Parse Request & Identify Action"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 989079628,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=989079628"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Appointment ID",
+              "lookupValue": "={{ $json.appointment_id }}"
+            },
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "CONFIRMED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        0
+      ],
+      "id": "3fc4fc6d-6445-45fc-8c23-2884879ffef2",
+      "name": "Lookup Active Booking in Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Request & Identify Action').first().json.action }}",
+                    "rightValue": "RESCHEDULE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3205a6aa-5687-4dac-ac6e-a9b0847f3b38"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "73f1a598-c28c-4e82-b9a4-42c3315fad9c",
+                    "leftValue": "={{ $('Parse Request & Identify Action').first().json.action }}",
+                    "rightValue": "CANCEL",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "3e82f54c-fa79-4d7b-ac52-1d1a5687e644",
+      "name": "Route Action"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 989079628,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=989079628"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $('Parse Request & Identify Action').first().json.new_date }}",
+            "Start": "={{ $('Parse Request & Identify Action').first().json.new_time }}",
+            "Appointment ID": "={{ $('Parse Request & Identify Action').first().json.appointment_id }}",
+            "End": "={{ $('Parse Request & Identify Action').first().json.new_end_time || $('Parse Request & Identify Action').first().json.new_time }}",
+            "Purpose": "={{ $('Parse Request & Identify Action').first().json.new_purpose || $('Lookup Active Booking in Sheets').first().json.Purpose }}"
+          },
+          "matchingColumns": [
+            "Appointment ID"
+          ],
+          "schema": [
+            {
+              "id": "Appointment ID",
+              "displayName": "Appointment ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start",
+              "displayName": "Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "End",
+              "displayName": "End",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Event ID",
+              "displayName": "Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cancelled At",
+              "displayName": "Cancelled At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1120,
+        -96
+      ],
+      "id": "a0cdac55-4301-46cc-b2d6-7ad54ea71bc4",
+      "name": "Update Row in Sheet: Reschedule",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "calendar": {
+          "__rl": true,
+          "value": "ivanquevedo302@gmail.com",
+          "mode": "list",
+          "cachedResultName": "ivanquevedo302@gmail.com"
+        },
+        "eventId": "={{ $('Lookup Active Booking in Sheets').first().json['Event ID'] }}",
+        "updateFields": {
+          "end": "={{ $json.Date }}T{{ $json.End.padStart(5, '0') }}:00+08:00",
+          "start": "={{ $json.Date }}T{{ $json.Start.padStart(5, '0') }}:00+08:00",
+          "summary": "={{ $json.Purpose }} - {{ $('Lookup Active Booking in Sheets').first().json['Customer ID'] }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        -96
+      ],
+      "id": "e7758679-e687-4752-996d-5d30859ef69a",
+      "name": "Update an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "g5hmLSfOYqzi35tF",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"results\": [\n    {\n      \"toolCallId\": \"={{ $('Parse Request & Identify Action').first().json.toolCallId }}\",\n      \"result\": \"Your appointment has been successfully rescheduled to {{ $('Parse Request & Identify Action').first().json.new_date }} at {{ $('Parse Request & Identify Action').first().json.new_time }}.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1792,
+        -96
+      ],
+      "id": "267e5064-d128-44aa-abd1-e5b2b6c2b043",
+      "name": "Respond: Reschedule Success"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 989079628,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=989079628"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Appointment ID": "={{ $('Parse Request & Identify Action').first().json.appointment_id }}",
+            "Status": "CANCELLED",
+            "Cancelled At": "={{ $('Lookup Active Booking in Sheets').first().json['Event ID'] }}"
+          },
+          "matchingColumns": [
+            "Appointment ID"
+          ],
+          "schema": [
+            {
+              "id": "Appointment ID",
+              "displayName": "Appointment ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start",
+              "displayName": "Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "End",
+              "displayName": "End",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Event ID",
+              "displayName": "Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cancelled At",
+              "displayName": "Cancelled At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1120,
+        96
+      ],
+      "id": "deabce21-c7ea-4af0-971a-68aae083ad79",
+      "name": "Update Row in Sheet: Cancel",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "ivanquevedo302@gmail.com",
+          "mode": "list",
+          "cachedResultName": "ivanquevedo302@gmail.com"
+        },
+        "eventId": "={{ $('Lookup Active Booking in Sheets').first().json['Event ID'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        96
+      ],
+      "id": "ff37c2f8-8bef-433e-9515-eafce486e294",
+      "name": "Delete an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "g5hmLSfOYqzi35tF",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 587502029,
+          "mode": "list",
+          "cachedResultName": "Cancellation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=587502029"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Cancellation ID": "=CAN-{{ $now.format('yyyyMMdd-HHmmss') }}",
+            "Appointment ID": "={{ $('Lookup Active Booking in Sheets').first().json['Appointment ID'] }}",
+            "Customer ID": "={{ $('Lookup Active Booking in Sheets').first().json['Customer ID'] }}",
+            "Reason": "={{ $('Parse Request & Identify Action').first().json.reason }}",
+            "Cancellation Date": "={{ $now.toISOString() }}",
+            "Status": "CANCELLED"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Cancellation ID",
+              "displayName": "Cancellation ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment ID",
+              "displayName": "Appointment ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cancellation Date",
+              "displayName": "Cancellation Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1600,
+        96
+      ],
+      "id": "a2000f25-f6b6-4678-969a-acf8ee8a191c",
+      "name": "Log Cancellation",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"results\": [\n    {\n      \"toolCallId\": \"={{ $('Parse Request & Identify Action').first().json.toolCallId }}\",\n      \"result\": \"Your appointment has been successfully cancelled. We look forward to serving you again in the future!\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        96
+      ],
+      "id": "952d09c8-49d9-461d-a117-b4257c4cbd76",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lookup Customer Email').first().json.Email }}",
+        "subject": "Your Purist Unsolved Skincare Appointment Has Been Rescheduled",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n   <meta charset=\"utf-8\">\n   <style>\n     body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333333; }\n     .card { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }\n     .header { background: #d97706; color: #ffffff; padding: 24px; text-align: center; }\n     .header h2 { margin: 0; font-size: 22px; font-weight: 600; }\n     .content { padding: 28px 24px; }\n     .status-badge { display: inline-block; background-color: #fef3c7; color: #b45309; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; }\n     .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #fafafa; border-radius: 8px; }\n     .details-table td { padding: 12px 16px; border-bottom: 1px solid #eeeeee; font-size: 14px; }\n     .details-table tr:last-child td { border-bottom: none; }\n     .label { font-weight: 600; color: #666666; width: 40%; }\n     .value { font-weight: 500; color: #111111; }\n     .footer { text-align: center; padding: 20px; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }\n   </style>\n</head>\n<body>\n   <div class=\"card\">\n     <div class=\"header\">\n       <h2>Purist Unsolved Skincare</h2>\n     </div>\n     <div class=\"content\">\n       <div class=\"status-badge\">🔄 Appointment Rescheduled</div>\n       <p>Hi <b>{{ $('Lookup Customer Email').first().json['Full Name'] || $('Lookup Active Booking in Sheets').first().json['Full Name'] || 'Valued Customer' }}</b>,</p>\n       <p>Your appointment has been successfully rescheduled. Here are your updated appointment details:</p>\n       \n       <table class=\"details-table\">\n         <tr>\n           <td class=\"label\">Appointment ID</td>\n           <td class=\"value\"><b>{{ $('Lookup Active Booking in Sheets').first().json['Appointment ID'] }}</b></td>\n         </tr>\n         <tr>\n           <td class=\"label\">Purpose</td>\n           <td class=\"value\"><b>{{ $('Parse Request & Identify Action').first().json.new_purpose || $('Lookup Active Booking in Sheets').first().json['Purpose'] }}</b></td>\n         </tr>\n         <tr>\n           <td class=\"label\">New Date</td>\n           <td class=\"value\"><b>{{ $('Parse Request & Identify Action').first().json.new_date }}</b></td>\n         </tr>\n         <tr>\n           <td class=\"label\">New Time</td>\n           <td class=\"value\"><b>{{ $('Parse Request & Identify Action').first().json.new_time }}</b></td>\n         </tr>\n       </table>\n\n       <p style=\"font-size: 13px; color: #555555; background: #fffbeb; padding: 12px; border-left: 4px solid #d97706; border-radius: 4px;\">\n         📌 If you need to make any further adjustments, feel free to call our automated voice assistant anytime.\n       </p>\n     </div>\n     <div class=\"footer\">\n       Purist Unsolved Skincare Clinic &bull; Mandaue City, Cebu\n     </div>\n   </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        -96
+      ],
+      "id": "b32031fc-b8e3-45c2-b12b-6f60c3517ae2",
+      "name": "Send a message",
+      "webhookId": "64f1a119-7400-4325-a515-3f51b0f7d452",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XJJEGNCKxrGZvpnd",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lookup Customer Email').first().json.Email }}",
+        "subject": "Notice of Appointment Cancellation - Purist Unsolved Skincare",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n   <meta charset=\"utf-8\">\n   <style>\n     body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333333; }\n     .card { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }\n     .header { background: #dc2626; color: #ffffff; padding: 24px; text-align: center; }\n     .header h2 { margin: 0; font-size: 22px; font-weight: 600; }\n     .content { padding: 28px 24px; }\n     .status-badge { display: inline-block; background-color: #fee2e2; color: #991b1b; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; }\n     .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #fafafa; border-radius: 8px; }\n     .details-table td { padding: 12px 16px; border-bottom: 1px solid #eeeeee; font-size: 14px; }\n     .details-table tr:last-child td { border-bottom: none; }\n     .label { font-weight: 600; color: #666666; width: 40%; }\n     .value { font-weight: 500; color: #111111; }\n     .footer { text-align: center; padding: 20px; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }\n   </style>\n</head>\n<body>\n   <div class=\"card\">\n     <div class=\"header\">\n       <h2>Purist Unsolved Skincare</h2>\n     </div>\n     <div class=\"content\">\n       <div class=\"status-badge\">❌ Appointment Cancelled</div>\n       <p>Hi <b>{{ $('Lookup Customer Email').first().json['Full Name'] || $('Lookup Active Booking in Sheets').first().json['Full Name'] || 'Valued Customer' }}</b>,</p>\n       <p>Your appointment has been successfully cancelled as requested. Here are the details of the cancelled session:</p>\n       \n       <table class=\"details-table\">\n         <tr>\n           <td class=\"label\">Appointment ID</td>\n           <td class=\"value\"><b>{{ $('Lookup Active Booking in Sheets').first().json['Appointment ID'] }}</b></td>\n         </tr>\n         <tr>\n           <td class=\"label\">Purpose</td>\n           <td class=\"value\">{{ $('Lookup Active Booking in Sheets').first().json['Purpose'] }}</td>\n         </tr>\n         <tr>\n           <td class=\"label\">Original Date</td>\n           <td class=\"value\">{{ $('Lookup Active Booking in Sheets').first().json['Date'] }}</td>\n         </tr>\n       </table>\n\n       <p style=\"font-size: 13px; color: #555555; background: #fef2f2; padding: 12px; border-left: 4px solid #dc2626; border-radius: 4px;\">\n         📌 We hope to welcome you back to Purist Unsolved Skincare soon when you are ready to book a new session.\n       </p>\n     </div>\n     <div class=\"footer\">\n       Purist Unsolved Skincare Clinic &bull; Mandaue City, Cebu\n     </div>\n   </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1824,
+        96
+      ],
+      "id": "3735d8a5-19e3-443d-a257-b62da49e2105",
+      "name": "Send a message1",
+      "webhookId": "973e6e47-a382-4a28-8035-ce9f9e047769",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XJJEGNCKxrGZvpnd",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 72408727,
+          "mode": "list",
+          "cachedResultName": "Customers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=72408727"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Customer ID",
+              "lookupValue": "={{ $('Lookup Active Booking in Sheets').first().json['Customer ID'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        688,
+        0
+      ],
+      "id": "8c0591ad-2b45-4864-8e17-4ab45c55f3dd",
+      "name": "Lookup Customer Email",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Vapi Webhook: Modify or Cancel Appointment": {
+      "main": [
+        [
+          {
+            "node": "Parse Request & Identify Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request & Identify Action": {
+      "main": [
+        [
+          {
+            "node": "Lookup Active Booking in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Active Booking in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Lookup Customer Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Action": {
+      "main": [
+        [
+          {
+            "node": "Update Row in Sheet: Reschedule",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Row in Sheet: Cancel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row in Sheet: Reschedule": {
+      "main": [
+        [
+          {
+            "node": "Update an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update an event": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row in Sheet: Cancel": {
+      "main": [
+        [
+          {
+            "node": "Delete an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete an event": {
+      "main": [
+        [
+          {
+            "node": "Log Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Respond: Reschedule Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Customer Email": {
+      "main": [
+        [
+          {
+            "node": "Route Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3c14641e-b4d0-4bef-898d-b1fc79583e71",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01d237eb3225a90a729645bc99a829e0ccc4135790c782c74390f7e3843784a0"
+  },
+  "nodeGroups": [],
+  "id": "jVrNR9XpNRPj7KqX",
+  "tags": []
+}

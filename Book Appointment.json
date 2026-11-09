@@ -1,0 +1,337 @@
+{
+  "name": "Book Appointment",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "book-appointment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        0
+      ],
+      "id": "49c51b9e-5fe0-4097-81ba-fce86c86bd0e",
+      "name": "Vapi Webhook: Book Appointment",
+      "webhookId": "f25ed612-c4f3-4aa8-a5ff-b320fc4b9bec"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItem = $input.item.json;\n\n// Check all possible paths where Vapi or n8n might place the arguments\nconst body = inputItem.body || inputItem;\nconst message = body.message || {};\nconst toolCall = message.toolCalls?.[0] || {};\nconst args = toolCall.function?.arguments || body.arguments || body;\n\nconst customerId = args.customer_id || \"CUS-UNKNOWN\";\nconst customerName = args.full_name || \"Valued Customer\";\nconst email = args.email || \"\";\nconst phone = args.phone || \"\";\nconst purpose = args.purpose || \"Consultation\";\nconst dateStr = args.date || new Date().toISOString().split('T')[0];\nconst rawTime = String(args.start_time || '08:00').trim();\n\nlet hour = parseInt(rawTime.split(':')[0], 10);\n\nif (isNaN(hour) || (hour < 8) || (hour > 15)) {\n  throw new Error(`Invalid time slot: ${rawTime}. Bookings are only allowed between 8:00 AM and 3:00 PM.`);\n}\n\nreturn [{\n  json: {\n    customer_id: customerId,\n    full_name: customerName,\n    email: email,\n    phone: phone,\n    purpose: purpose,\n    date: dateStr,\n    start_time: rawTime,\n    end_time: `${String(hour + 1).padStart(2, '0')}:00`,\n    appointment_id: `APT-${dateStr.replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "295a32d9-040d-40e2-8943-f657fbe58507",
+      "name": "Parse Booking Details & Validate Time Slot"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 989079628,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=989079628"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Purpose": "={{ $json.purpose }}",
+            "Start": "={{ $json.start_time }}",
+            "End": "={{ $json.end_time }}",
+            "Appointment ID": "={{ 'APT-' + $now.toFormat('yyyyMMdd') + '-' + Math.floor(1000 + Math.random() * 9000) }}",
+            "Customer ID": "={{ $json.customer_id }}",
+            "Date": "={{ $json.date }}",
+            "Event ID": "=",
+            "Status": "PENDING",
+            "Created At": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Appointment ID",
+              "displayName": "Appointment ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start",
+              "displayName": "Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "End",
+              "displayName": "End",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Event ID",
+              "displayName": "Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cancelled At",
+              "displayName": "Cancelled At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        432,
+        0
+      ],
+      "id": "ee80afef-575c-40d7-a6c4-c209ad7ccf6e",
+      "name": "Save New Appointment to Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"results\": [\n    {\n      \"toolCallId\": \"={{ $('Vapi Webhook: Book Appointment').item.json.body.message.toolCalls[0].id }}\",\n      \"result\": \"Appointment successfully booked for {{ $('Parse Booking Details & Validate Time Slot').item.json.customerName }} on {{ $('Parse Booking Details & Validate Time Slot').item.json.bookingDate }} at {{ $('Parse Booking Details & Validate Time Slot').item.json.bookingTime }}.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        848,
+        0
+      ],
+      "id": "97851634-cd69-4fee-9328-0cf1ede9271d",
+      "name": "Respond: Appointment Booked Successfully"
+    },
+    {
+      "parameters": {
+        "chatId": "8591395981",
+        "text": "=NEW APPOINTMENT REQUEST\nCustomer: {{ $('Save New Appointment to Sheets').first().json['Customer ID'] }}\nService: {{ $('Save New Appointment to Sheets').first().json.Purpose }}\nDate: {{ $('Save New Appointment to Sheets').first().json.Date }}\nTime: {{ $('Save New Appointment to Sheets').first().json.Start }}\nAppointment ID: {{ $('Save New Appointment to Sheets').first().json['Appointment ID'] }}\n\nPlease approve or reject this booking:",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Accept",
+                    "additionalFields": {
+                      "callback_data": "={{ 'APPROVE:' + $('Save New Appointment to Sheets').item.json['Appointment ID'] }}"
+                    }
+                  },
+                  {
+                    "text": "Reject",
+                    "additionalFields": {
+                      "callback_data": "={{ 'REJECT:' + $('Save New Appointment to Sheets').item.json['Appointment ID'] }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "0184be1f-2ca2-4fcc-abdb-af0f19f92e07",
+      "name": "Send Telegram Booking Notification",
+      "webhookId": "04e82aa9-78f1-438d-a48a-a5c63fda710c",
+      "credentials": {
+        "telegramApi": {
+          "id": "o1HqsFikaJzVaQpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Parse Booking Details & Validate Time Slot').first().json.email }}",
+        "subject": "=Appointment Received - Pending Approval (ID: {{ $('Parse Booking Details & Validate Time Slot').first().json.appointment_id }})",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <style>\n    body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333333; }\n    .card { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }\n    .header { background: #0077b6; color: #ffffff; padding: 24px; text-align: center; }\n    .header h2 { margin: 0; font-size: 22px; font-weight: 600; }\n    .content { padding: 28px 24px; }\n    .status-badge { display: inline-block; background-color: #fff3cd; color: #856404; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; }\n    .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #fafafa; border-radius: 8px; }\n    .details-table td { padding: 12px 16px; border-bottom: 1px solid #eeeeee; font-size: 14px; }\n    .details-table tr:last-child td { border-bottom: none; }\n    .label { font-weight: 600; color: #666666; width: 40%; }\n    .value { font-weight: 500; color: #111111; }\n    .footer { text-align: center; padding: 20px; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h2>Purist Unsolved Skincare</h2>\n    </div>\n    <div class=\"content\">\n      <div class=\"status-badge\">⏳ Pending Admin Approval</div>\n      <p>Hi <b>{{ $('Parse Booking Details & Validate Time Slot').first().json.full_name }}</b>,</p>\n      <p>Thank you for booking with us! We have received your appointment request and our team is currently reviewing the schedule.</p>\n      \n      <table class=\"details-table\">\n        <tr>\n          <td class=\"label\">Appointment ID</td>\n          <td class=\"value\"><b>{{ $('Parse Booking Details & Validate Time Slot').first().json.appointment_id }}</b></td>\n        </tr>\n        <tr>\n          <td class=\"label\">Service / Purpose</td>\n          <td class=\"value\">{{ $('Parse Booking Details & Validate Time Slot').first().json.purpose }}</td>\n        </tr>\n        <tr>\n          <td class=\"label\">Requested Date</td>\n          <td class=\"value\">{{ $('Parse Booking Details & Validate Time Slot').first().json.date }}</td>\n        </tr>\n        <tr>\n          <td class=\"label\">Requested Time</td>\n          <td class=\"value\">{{ $('Parse Booking Details & Validate Time Slot').first().json.start_time }}</td>\n        </tr>\n      </table>\n\n      <p style=\"font-size: 13px; color: #555555; background: #eef7fc; padding: 12px; border-left: 4px solid #0077b6; border-radius: 4px;\">\n        💡 <b>Tip:</b> Keep your <b>Appointment ID</b> handy. You can use it anytime to check status, reschedule, or cancel your booking over the phone.\n      </p>\n    </div>\n    <div class=\"footer\">\n      Purist Unsolved Skincare Clinic &bull; Mandaue City, Cebu\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        656,
+        0
+      ],
+      "id": "85ff68ac-21a9-46e6-bc77-87343e6861ca",
+      "name": "Send a message - Pending Approval",
+      "webhookId": "94e0a3a3-8f7a-4e75-a023-a181fe7310c9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XJJEGNCKxrGZvpnd",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Vapi Webhook: Book Appointment": {
+      "main": [
+        [
+          {
+            "node": "Parse Booking Details & Validate Time Slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Booking Details & Validate Time Slot": {
+      "main": [
+        [
+          {
+            "node": "Save New Appointment to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save New Appointment to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send a message - Pending Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond: Appointment Booked Successfully": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Booking Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message - Pending Approval": {
+      "main": [
+        [
+          {
+            "node": "Respond: Appointment Booked Successfully",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Booking Notification": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8c60c855-cffc-46b8-bab2-0f9729292982",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01d237eb3225a90a729645bc99a829e0ccc4135790c782c74390f7e3843784a0"
+  },
+  "nodeGroups": [],
+  "id": "E91IDmctGlkdXczn",
+  "tags": []
+}

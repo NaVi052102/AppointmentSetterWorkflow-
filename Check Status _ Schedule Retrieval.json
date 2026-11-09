@@ -1,0 +1,218 @@
+{
+  "name": "Check Status / Schedule Retrieval",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 989079628,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=989079628"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Customer ID",
+              "lookupValue": "={{ $('Get customer by phone').first().json['Customer ID'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        0
+      ],
+      "id": "46d0bea0-4950-4bad-b4ef-6431afcd0912",
+      "name": "Get appointments by customer ID",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 72408727,
+          "mode": "list",
+          "cachedResultName": "Customers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=72408727"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Phone",
+              "lookupValue": "={{ $('Parse Incoming Request').first().json.phoneNumber }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        432,
+        0
+      ],
+      "id": "310142ef-6457-4202-aa71-bccbf0eb3002",
+      "name": "Get customer by phone",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nconst body = inputData.body || inputData || {};\nconst message = body.message || {};\nconst toolCall = message.toolCalls?.[0] || {};\nconst args = toolCall.function?.arguments || body || {};\n\nconst rawPhone = args.phone_number || args.phone || message.customer?.number || \"\";\n\n// Extract digits only\nlet digits = rawPhone.replace(/\\D/g, '');\n\n// Standardize +639XXXXXXXXX or 9XXXXXXXXX to 09XXXXXXXXX\nif (digits.startsWith('639') && digits.length === 12) {\n  digits = '0' + digits.substring(2);\n} else if (digits.startsWith('9') && digits.length === 10) {\n  digits = '0' + digits;\n}\n\nconst customerId = args.customer_id || \"\";\n\nreturn [{\n  json: {\n    toolCallId: toolCall.id || \"\",\n    customerId: customerId.trim(),\n    phoneNumber: digits.trim()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "8f287feb-963a-46c5-a9be-4fc2590421fb",
+      "name": "Parse Incoming Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const incoming = $('Parse Incoming Request').first().json;\nconst customerRow = $('Get customer by phone').first().json;\nconst rows = $input.all().map(item => item.json);\n\n// Check if customer exists in tblCustomers\nif (!customerRow || !customerRow['Customer ID']) {\n  return [{\n    json: {\n      toolCallId: incoming.toolCallId,\n      speechResponse: \"I couldn't find any account registered under this phone number in our records.\",\n      count: 0\n    }\n  }];\n}\n\n// Filter ONLY CONFIRMED appointments\nconst confirmedAppointments = rows.filter(row => {\n  const status = (row['Status'] || '').toUpperCase();\n  return status === 'CONFIRMED' && row['Appointment ID'];\n});\n\nlet speechText = \"\";\nconst customerName = customerRow['Full Name'] || 'there';\n\nif (confirmedAppointments.length === 0) {\n  speechText = `Hello ${customerName}, I checked our records, but you don't have any confirmed appointments right now.`;\n} else if (confirmedAppointments.length === 1) {\n  const appt = confirmedAppointments[0];\n  const date = appt['Date'] || 'your scheduled date';\n  const time = appt['Start'] || appt['Time'] || '';\n  const purpose = appt['Purpose'] || 'your appointment';\n  \n  speechText = `Hi ${customerName}, you have a confirmed ${purpose} appointment scheduled for ${date} ${time ? 'at ' + time : ''}.`;\n} else {\n  const apptSummaries = confirmedAppointments.map((appt, i) => \n    `Appointment ${i + 1}: ${appt['Purpose'] || 'Service'} on ${appt['Date']}`\n  ).join(\". \");\n  \n  speechText = `Hi ${customerName}, you have ${confirmedAppointments.length} confirmed appointments. Here are the details: ${apptSummaries}.`;\n}\n\nreturn [{\n  json: {\n    toolCallId: incoming.toolCallId,\n    speechResponse: speechText,\n    count: confirmedAppointments.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "82851117-a85b-48ad-b42d-85bfe2392bfc",
+      "name": "Format Speech Response"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "check_appointment_status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7eeee08d-dccc-4f6d-a44e-1f2a63dbaf4d",
+      "name": "Vapi Webhook: Check Appointment Status",
+      "webhookId": "1145265a-45ce-417a-8099-4681e0222317"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"results\": [\n    {\n      \"toolCallId\": \"={{ $json.toolCallId }}\",\n      \"result\": \"={{ $json.speechResponse }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "79ed9873-82d0-4d4d-969e-5183639540de",
+      "name": "Respond: Appointment Schedule"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get appointments by customer ID": {
+      "main": [
+        [
+          {
+            "node": "Format Speech Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get customer by phone": {
+      "main": [
+        [
+          {
+            "node": "Get appointments by customer ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Incoming Request": {
+      "main": [
+        [
+          {
+            "node": "Get customer by phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Speech Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Appointment Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vapi Webhook: Check Appointment Status": {
+      "main": [
+        [
+          {
+            "node": "Parse Incoming Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "79a82447-5d9b-410b-af7d-ed2bcb49251d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01d237eb3225a90a729645bc99a829e0ccc4135790c782c74390f7e3843784a0"
+  },
+  "nodeGroups": [],
+  "id": "12faUVkQOfvAQ7VQ",
+  "tags": []
+}

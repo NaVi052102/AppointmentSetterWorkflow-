@@ -1,0 +1,153 @@
+{
+  "name": "Check Calendar Availability",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "check-availability",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        96,
+        0
+      ],
+      "id": "881c2b08-9b06-43d4-8e89-b48062f875de",
+      "name": "Vapi Webhook: Check Availability",
+      "webhookId": "326c2ce3-eefc-489b-ada7-9cbc71f6029f"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Grab the incoming webhook request body directly\nconst inputItem = $input.item.json;\nconst args = inputItem.body?.message?.toolCalls?.[0]?.function?.arguments || {};\n\n// Target date passed by Vapi (fallback to today if empty)\nconst requestedDateStr = args.date || new Date().toISOString().split('T')[0];\n\n// Define start and end of that target day in ISO format for the calendar node\nconst timeMin = new Date(`${requestedDateStr}T00:00:00Z`).toISOString();\nconst timeMax = new Date(`${requestedDateStr}T23:59:59Z`).toISOString();\n\nreturn [{\n  json: {\n    requestedDate: requestedDateStr,\n    timeMin: timeMin,\n    timeMax: timeMax\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        0
+      ],
+      "id": "44ba21e0-932f-4190-abf0-f62c5f6c6295",
+      "name": "Parse Requested Date & Set Time Range"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Retrieve Google Calendar events (will be an empty array [] if the day is completely free)\nconst events = $input.all();\nconst requestedDateStr = $('Parse Requested Date & Set Time Range').item.json.requestedDate;\n\n// Define your standard business hours slots (9 AM - 4 PM)\nconst standardSlots = [\"09:00\", \"10:00\", \"11:00\", \"13:00\", \"14:00\", \"15:00\", \"16:00\"];\n\n// Extract busy event start times safely\nconst busyTimes = events\n  .filter(e => e.json && e.json.start)\n  .map(e => e.json.start.dateTime || e.json.start.date || \"\");\n\n// Filter out slots that overlap with busy times\nconst availableSlots = standardSlots.filter(slot => {\n  const slotISO = `${requestedDateStr}T${slot}`;\n  return !busyTimes.some(busy => busy.includes(slotISO));\n});\n\nreturn [{\n  json: {\n    requestedDate: requestedDateStr,\n    availableSlots: availableSlots.join(', ') || \"No open slots\",\n    hasSlots: availableSlots.length > 0\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "1ccc5e8a-ccf1-477c-b4ef-d0a5433c6ce0",
+      "name": "Filter Available Business Hours Slots"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"results\": [\n    {\n      \"toolCallId\": \"call_avail_001\",\n      \"result\": \"On 2026-11-10, the available time slots are: 09:00, 10:00, 11:00, 13:00, 14:00, 15:00, 16:00\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        976,
+        0
+      ],
+      "id": "b67f3444-fc27-45d1-ad65-c196558ca9d4",
+      "name": "Respond: Available Slots"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "ivanquevedo302@gmail.com",
+          "mode": "list",
+          "cachedResultName": "ivanquevedo302@gmail.com"
+        },
+        "limit": 20,
+        "timeMin": "={{ $json.timeMin }}",
+        "timeMax": "={{ $json.timeMax }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        0
+      ],
+      "id": "135893bb-7e2d-4499-b3dd-9d7eb2b751dd",
+      "name": "Fetch Google Calendar Events",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "g5hmLSfOYqzi35tF",
+          "name": "Google Calendar account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Vapi Webhook: Check Availability": {
+      "main": [
+        [
+          {
+            "node": "Parse Requested Date & Set Time Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Requested Date & Set Time Range": {
+      "main": [
+        [
+          {
+            "node": "Fetch Google Calendar Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Available Business Hours Slots": {
+      "main": [
+        [
+          {
+            "node": "Respond: Available Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Google Calendar Events": {
+      "main": [
+        [
+          {
+            "node": "Filter Available Business Hours Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6ba37721-36e7-4b8e-b3fe-dbbe2194c0d4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01d237eb3225a90a729645bc99a829e0ccc4135790c782c74390f7e3843784a0"
+  },
+  "nodeGroups": [],
+  "id": "1xapnZ3AC0eKNYK4",
+  "tags": []
+}

@@ -1,0 +1,413 @@
+{
+  "name": "Customer Verification & Registration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-appointment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        0
+      ],
+      "id": "26a8818e-417c-4554-8dfb-446fa0f596cc",
+      "name": "Vapi Webhook: Customer Verification",
+      "webhookId": "565c16a6-0974-4346-9beb-a24eb49c450b"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nconst body = inputData.body || inputData || {};\nconst message = body.message || {};\nconst toolCall = message.toolCalls?.[0] || {};\n\n// Parse function arguments if Vapi sends them as a JSON string\nlet args = toolCall.function?.arguments || body || {};\nif (typeof args === 'string') {\n  try {\n    args = JSON.parse(args);\n  } catch (e) {\n    args = {};\n  }\n}\n\n// Check for phone across all common key variants\nconst rawPhone = String(\n  message.customer?.number || \n  args.Phone ||\n  args.phone || \n  args.phone_number || \n  body.Phone ||\n  body.phone || \n  body.phone_number || \n  \"\"\n);\n\nlet phone = rawPhone.replace(/\\D/g, '');\nif (phone.startsWith('639') && phone.length === 12) {\n  phone = '0' + phone.substring(2);\n} else if (phone.startsWith('9') && phone.length === 10) {\n  phone = '0' + phone;\n}\n\nconst cleanedPhone = phone.trim();\n\nreturn [{\n  json: {\n    fullName: args.full_name || body.full_name || args.fullName || body.fullName || \"\",\n    email: args.email || body.email || \"\",\n    Phone: cleanedPhone,\n    phone: cleanedPhone\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b7161a7a-96f4-4309-9ad3-b66ba893ff6c",
+      "name": "Parse Incoming Customer Data"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 72408727,
+          "mode": "list",
+          "cachedResultName": "Customers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=72408727"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Full Name",
+              "lookupValue": "={{ $json.fullName }}"
+            },
+            {
+              "lookupColumn": "Email",
+              "lookupValue": "={{ $json.email }}"
+            },
+            {
+              "lookupColumn": "Phone",
+              "lookupValue": "={{ $json.Phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        384,
+        0
+      ],
+      "id": "8e58fa9e-4b6a-4205-b530-21d91154c63c",
+      "name": "Lookup Customer in Sheets",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "740b54f0-07bd-49ec-a0b4-042ce3ed7bea",
+              "leftValue": "={{ $json['Customer ID'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        576,
+        0
+      ],
+      "id": "05489fbe-bb37-4566-87a8-93765ea21831",
+      "name": "Check If Customer Exists"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"results\": [\n    {\n      \"toolCallId\": \"={{ $('Webhook').item.json.body.message.toolCalls[0].id }}\",\n      \"result\": \"Customer verified successfully: Maria Santos (ID: CUS-0001). Proceed to check appointment schedule.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        992,
+        -80
+      ],
+      "id": "f77de782-6ba8-4a99-bfdc-f98d2412f9a0",
+      "name": "Respond: Customer Verified"
+    },
+    {
+      "parameters": {
+        "jsCode": "const parsed = $('Parse Incoming Customer Data').first().json;\n\nconst randomId = Math.floor(1000 + Math.random() * 9000);\nconst newCustomerId = `CUS-${randomId}`;\n\n// Generate correct local Philippine Time (UTC+8) timestamp\nconst now = new Date();\nconst phTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));\nconst today = phTime.toISOString().replace('T', ' ').substring(0, 19);\n\nreturn [{\n  json: {\n    customer_id: newCustomerId,\n    full_name: parsed.fullName,\n    email: parsed.email,\n    phone: parsed.phone,\n    registered_date: today\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        80
+      ],
+      "id": "7ed13717-6954-467a-93cd-7f7e7866cb88",
+      "name": "Generate New Customer ID & Timestamp"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 72408727,
+          "mode": "list",
+          "cachedResultName": "Customers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=72408727"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Customer ID": "={{ $json.customer_id }}",
+            "Full Name": "={{ $json.full_name }}",
+            "Email": "={{ $json.email }}",
+            "Phone": "={{ $json.phone }}",
+            "Registered Date": "={{ $json.registered_date }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Registered Date",
+              "displayName": "Registered Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        80
+      ],
+      "id": "1fdc8a0a-5397-4800-9d3a-c8dc0afdd9fb",
+      "name": "Save New Customer to Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"results\": [\n    {\n      \"toolCallId\": \"={{ $('Webhook').item.json.body.message.toolCalls[0].id }}\",\n      \"result\": \"New customer registered: {{ $json['Full Name'] }} (ID: {{ $json['Customer ID'] }}). Proceed to check appointment schedule.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1616,
+        80
+      ],
+      "id": "ae8367a1-cd6b-43e2-94cc-ff28d3305df2",
+      "name": "Respond: Customer Registered"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lookup Customer in Sheets').first().json.Email || $('Parse Incoming Customer Data').first().json.email }}",
+        "subject": "Welcome Back - Purist Unsolved Skincare Account Verified",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <style>\n    body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333333; }\n    .card { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }\n    .header { background: #2b9348; color: #ffffff; padding: 24px; text-align: center; }\n    .header h2 { margin: 0; font-size: 22px; font-weight: 600; }\n    .content { padding: 28px 24px; }\n    .status-badge { display: inline-block; background-color: #d4edda; color: #155724; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; }\n    .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #fafafa; border-radius: 8px; }\n    .details-table td { padding: 12px 16px; border-bottom: 1px solid #eeeeee; font-size: 14px; }\n    .details-table tr:last-child td { border-bottom: none; }\n    .label { font-weight: 600; color: #666666; width: 40%; }\n    .value { font-weight: 500; color: #111111; }\n    .footer { text-align: center; padding: 20px; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h2>Purist Unsolved Skincare</h2>\n    </div>\n    <div class=\"content\">\n      <div class=\"status-badge\">✅ Account Verified</div>\n      <p>Hi <b>{{ $('Lookup Customer in Sheets').first().json['Full Name'] }}</b>,</p>\n      <p>We've successfully verified your identity on our system during your recent call.</p>\n      \n      <table class=\"details-table\">\n        <tr>\n          <td class=\"label\">Customer ID</td>\n          <td class=\"value\"><b>{{ $('Lookup Customer in Sheets').first().json['Customer ID'] }}</b></td>\n        </tr>\n        <tr>\n          <td class=\"label\">Phone Number</td>\n          <td class=\"value\">{{ $('Lookup Customer in Sheets').first().json.Phone }}</td>\n        </tr>\n        <tr>\n          <td class=\"label\">Registered Email</td>\n          <td class=\"value\">{{ $('Lookup Customer in Sheets').first().json.Email }}</td>\n        </tr>\n      </table>\n\n      <p style=\"font-size: 13px; color: #555555; background: #eef9f1; padding: 12px; border-left: 4px solid #2b9348; border-radius: 4px;\">\n        📌 You are all set to book appointments seamlessly with your voice assistant!\n      </p>\n    </div>\n    <div class=\"footer\">\n      Purist Unsolved Skincare Clinic &bull; Mandaue City, Cebu\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        -80
+      ],
+      "id": "27453754-efa3-465b-8a51-d1145f081cb9",
+      "name": "Send verified message",
+      "webhookId": "33cf62c6-037b-4a59-8ed2-a8c8a208de12",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XJJEGNCKxrGZvpnd",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Parse Incoming Customer Data').first().json.email }}",
+        "subject": "Welcome to Purist Unsolved Skincare - Your Account Details",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <style>\n    body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333333; }\n    .card { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }\n    .header { background: #0284c7; color: #ffffff; padding: 24px; text-align: center; }\n    .header h2 { margin: 0; font-size: 22px; font-weight: 600; }\n    .content { padding: 28px 24px; }\n    .status-badge { display: inline-block; background-color: #e0f2fe; color: #0369a1; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; }\n    .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #fafafa; border-radius: 8px; }\n    .details-table td { padding: 12px 16px; border-bottom: 1px solid #eeeeee; font-size: 14px; }\n    .details-table tr:last-child td { border-bottom: none; }\n    .label { font-weight: 600; color: #666666; width: 40%; }\n    .value { font-weight: 500; color: #111111; }\n    .footer { text-align: center; padding: 20px; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h2>Purist Unsolved Skincare</h2>\n    </div>\n    <div class=\"content\">\n      <div class=\"status-badge\">✨ Registration Successful</div>\n      <p>Hi <b>{{ $('Parse Incoming Customer Data').first().json.fullName }}</b>,</p>\n      <p>Your account has been successfully registered with our clinic system! Here are your credentials for future bookings and verifications:</p>\n      \n      <table class=\"details-table\">\n        <tr>\n          <td class=\"label\">Customer ID</td>\n          <td class=\"value\"><b>{{ $('Save New Customer to Sheets').first().json['Customer ID'] }}</b></td>\n        </tr>\n        <tr>\n          <td class=\"label\">Full Name</td>\n          <td class=\"value\">{{ $('Parse Incoming Customer Data').first().json.fullName }}</td>\n        </tr>\n        <tr>\n          <td class=\"label\">Phone Number</td>\n          <td class=\"value\">{{ $('Save New Customer to Sheets').first().json.Phone || $('Parse Incoming Customer Data').first().json.Phone }}</td>\n        </tr>\n      </table>\n\n      <p style=\"font-size: 13px; color: #555555; background: #f0f9ff; padding: 12px; border-left: 4px solid #0284c7; border-radius: 4px;\">\n        📌 Please keep your <b>Customer ID</b> handy. You can use it anytime you call our automated voice line to book treatments.\n      </p>\n    </div>\n    <div class=\"footer\">\n      Purist Unsolved Skincare Clinic &bull; Mandaue City, Cebu\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1424,
+        80
+      ],
+      "id": "c2eae9e8-07bc-44a5-a79c-acae7caf7a3e",
+      "name": "Send registration message",
+      "webhookId": "6fc60b0b-8387-444c-8d2b-45d38f216f49",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XJJEGNCKxrGZvpnd",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Vapi Webhook: Customer Verification": {
+      "main": [
+        [
+          {
+            "node": "Parse Incoming Customer Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Incoming Customer Data": {
+      "main": [
+        [
+          {
+            "node": "Lookup Customer in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Customer in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Check If Customer Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Customer Exists": {
+      "main": [
+        [
+          {
+            "node": "Send verified message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate New Customer ID & Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate New Customer ID & Timestamp": {
+      "main": [
+        [
+          {
+            "node": "Save New Customer to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save New Customer to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send registration message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send verified message": {
+      "main": [
+        [
+          {
+            "node": "Respond: Customer Verified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send registration message": {
+      "main": [
+        [
+          {
+            "node": "Respond: Customer Registered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "057e8fbc-1e3d-4213-b642-f949c6a6a887",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01d237eb3225a90a729645bc99a829e0ccc4135790c782c74390f7e3843784a0"
+  },
+  "nodeGroups": [],
+  "id": "Q42DbZYefLUPIcZT",
+  "tags": []
+}

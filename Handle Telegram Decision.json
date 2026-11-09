@@ -1,0 +1,719 @@
+{
+  "name": "Handle Telegram Decision",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-callback",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -480,
+        32
+      ],
+      "id": "ee32c3ff-6caa-4701-9e14-fff1c09ff512",
+      "name": "Telegram Webhook: Admin Decision",
+      "webhookId": "c5a8d17d-62a0-4daf-bb4c-33769d2f98ad"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Telegram Webhook: Admin Decision').first().json.body.callback_query.data }}",
+                    "rightValue": "APPROVE:",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "id": "3a6f0702-d09a-4738-a77d-9c70d9d03f14"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "c77f4e61-bdc2-4f07-927e-b92e2a7bdc17",
+                    "leftValue": "={{ $('Telegram Webhook: Admin Decision').first().json.body.callback_query.data }}",
+                    "rightValue": "REJECT:",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3368438d-6a9c-4faa-b736-6a78c265a8e7",
+      "name": "Route Approval vs Rejection"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 989079628,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=989079628"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Appointment ID",
+              "lookupValue": "={{ $json.body.callback_query.data.split(':')[1] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -208,
+        32
+      ],
+      "id": "b3d3cb28-2bee-4b34-882c-3ead4a44c539",
+      "name": "Lookup Booking in Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "ivanquevedo302@gmail.com",
+          "mode": "list",
+          "cachedResultName": "ivanquevedo302@gmail.com"
+        },
+        "start": "={{ $('Lookup Booking in Sheets').first().json.Date }}T{{ $('Lookup Booking in Sheets').first().json.Start }}:00+08:00",
+        "end": "={{ $('Lookup Booking in Sheets').first().json.Date }}T{{ $('Lookup Booking in Sheets').first().json.End }}:00+08:00",
+        "additionalFields": {
+          "summary": "={{ $('Lookup Booking in Sheets').item.json.Purpose + ' - ' + $('Lookup Booking in Sheets').item.json['Customer ID'] }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        -96
+      ],
+      "id": "2d6ed122-7ae5-4fc2-93dd-308b88e660a8",
+      "name": "Create Google Calendar Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "g5hmLSfOYqzi35tF",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 989079628,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=989079628"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Appointment ID": "={{ $('Lookup Booking in Sheets').item.json['Appointment ID'] }}",
+            "Event ID": "={{ $('Create Google Calendar Event').item.json.id }}",
+            "Status": "CONFIRMED"
+          },
+          "matchingColumns": [
+            "Appointment ID"
+          ],
+          "schema": [
+            {
+              "id": "Appointment ID",
+              "displayName": "Appointment ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start",
+              "displayName": "Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "End",
+              "displayName": "End",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Event ID",
+              "displayName": "Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cancelled At",
+              "displayName": "Cancelled At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1088,
+        -96
+      ],
+      "id": "742f3781-2356-498a-aac5-aba2c1ddf70e",
+      "name": "Mark Booking CONFIRMED in Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Telegram Webhook: Admin Decision').item.json.body.callback_query.message.chat.id }}",
+        "messageId": "={{ $('Telegram Webhook: Admin Decision').item.json.body.callback_query.message.message_id }}",
+        "text": "={{ $('Telegram Webhook: Admin Decision').item.json.body.callback_query.message.text + \"\\n\\n*STATUS: APPROVED BY ADMIN*\" }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1312,
+        -96
+      ],
+      "id": "48c21742-5f83-497b-b163-2a16e59b7ce4",
+      "name": "Update Telegram UI: Approved",
+      "webhookId": "afa04095-b385-4b94-aa1f-999a515818ec",
+      "credentials": {
+        "telegramApi": {
+          "id": "o1HqsFikaJzVaQpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 989079628,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=989079628"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Appointment ID": "={{ $('Telegram Webhook: Admin Decision').item.json.body.callback_query.data.split(':')[1] }}",
+            "Status": "REJECTED"
+          },
+          "matchingColumns": [
+            "Appointment ID"
+          ],
+          "schema": [
+            {
+              "id": "Appointment ID",
+              "displayName": "Appointment ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Start",
+              "displayName": "Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "End",
+              "displayName": "End",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Event ID",
+              "displayName": "Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cancelled At",
+              "displayName": "Cancelled At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        96
+      ],
+      "id": "6f998434-3ccb-4a57-b3e7-74ef6aaa0bb0",
+      "name": "Mark Booking REJECTED in Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Telegram Webhook: Admin Decision').item.json.body.callback_query.message.chat.id }}",
+        "messageId": "={{ $('Telegram Webhook: Admin Decision').item.json.body.callback_query.message.message_id }}",
+        "text": "={{ $('Telegram Webhook: Admin Decision').item.json.body.callback_query.message.text + \"\\n\\n*STATUS: REJECTED BY ADMIN*\" }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        96
+      ],
+      "id": "eee188a2-06b9-4302-a0f0-4963470e8229",
+      "name": "Update Telegram UI: Rejected",
+      "webhookId": "afa04095-b385-4b94-aa1f-999a515818ec",
+      "credentials": {
+        "telegramApi": {
+          "id": "o1HqsFikaJzVaQpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lookup Customer Email').first().json.Email }}",
+        "subject": "=Appointment CONFIRMED! (ID: {{ $('Lookup Booking in Sheets').first().json['Appointment ID'] }})",
+        "message": "=<!DOCTYPE html> <html> <head>   <meta charset=\"utf-8\">   <style>     body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333333; }     .card { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }     .header { background: #2b9348; color: #ffffff; padding: 24px; text-align: center; }     .header h2 { margin: 0; font-size: 22px; font-weight: 600; }     .content { padding: 28px 24px; }     .status-badge { display: inline-block; background-color: #d4edda; color: #155724; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; }     .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #fafafa; border-radius: 8px; }     .details-table td { padding: 12px 16px; border-bottom: 1px solid #eeeeee; font-size: 14px; }     .details-table tr:last-child td { border-bottom: none; }     .label { font-weight: 600; color: #666666; width: 40%; }     .value { font-weight: 500; color: #111111; }     .footer { text-align: center; padding: 20px; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }   </style> </head> <body>   <div class=\"card\">     <div class=\"header\">       <h2>Purist Unsolved Skincare</h2>     </div>     <div class=\"content\">       <div class=\"status-badge\">✅ Booking Confirmed</div>       <p>Hi <b>{{ $('Lookup Booking in Sheets').first().json['Full Name'] || 'Valued Customer' }}</b>,</p>       <p>Great news! Your appointment request has been successfully approved and confirmed by our clinic administrator.</p>              <table class=\"details-table\">         <tr>           <td class=\"label\">Appointment ID</td>           <td class=\"value\"><b>{{ $('Lookup Booking in Sheets').first().json['Appointment ID'] }}</b></td>         </tr>         <tr>           <td class=\"label\">Service / Purpose</td>           <td class=\"value\">{{ $('Lookup Booking in Sheets').first().json.Purpose }}</td>         </tr>         <tr>           <td class=\"label\">Date</td>           <td class=\"value\">{{ $('Lookup Booking in Sheets').first().json.Date }}</td>         </tr>         <tr>           <td class=\"label\">Time Slot</td>           <td class=\"value\">{{ $('Lookup Booking in Sheets').first().json.Start }} - {{ $('Lookup Booking in Sheets').first().json.End }}</td>         </tr>       </table>        <p style=\"font-size: 13px; color: #555555; background: #eef9f1; padding: 12px; border-left: 4px solid #2b9348; border-radius: 4px;\">         📌 Please keep your <b>Appointment ID</b> handy. You can use it anytime to check status, reschedule, or cancel your booking over the phone.       </p>     </div>     <div class=\"footer\">       Purist Unsolved Skincare Clinic &bull; Mandaue City, Cebu     </div>   </div> </body> </html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        -96
+      ],
+      "id": "210b6a27-02da-415a-8c9a-f0957a89925f",
+      "name": "Send Approval message",
+      "webhookId": "8b2b8ea7-f158-47bb-b220-9a5479fb5c3f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XJJEGNCKxrGZvpnd",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4",
+          "mode": "list",
+          "cachedResultName": "Appointment Management",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 72408727,
+          "mode": "list",
+          "cachedResultName": "Customers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hCFFkd37X_OvzhDnxFEyEd8f5cvh8nsNwE8KA9cdgy4/edit#gid=72408727"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Customer ID",
+              "lookupValue": "={{ $('Lookup Booking in Sheets').first().json['Customer ID'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        32
+      ],
+      "id": "9e0ac34d-6f2e-4fe0-952b-b240c1c4d2f9",
+      "name": "Lookup Customer Email",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SEZUqwLQbc8olA3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lookup Customer Email').first().json.Email }}",
+        "subject": "=Appointment Update (ID: {{ $('Lookup Booking in Sheets').first().json['Appointment ID'] }})",
+        "message": "=<!DOCTYPE html> <html> <head>   <meta charset=\"utf-8\">   <style>     body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333333; }     .card { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }     .header { background: #d90429; color: #ffffff; padding: 24px; text-align: center; }     .header h2 { margin: 0; font-size: 22px; font-weight: 600; }     .content { padding: 28px 24px; }     .status-badge { display: inline-block; background-color: #f8d7da; color: #721c24; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; }     .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #fafafa; border-radius: 8px; }     .details-table td { padding: 12px 16px; border-bottom: 1px solid #eeeeee; font-size: 14px; }     .details-table tr:last-child td { border-bottom: none; }     .label { font-weight: 600; color: #666666; width: 40%; }     .value { font-weight: 500; color: #111111; }     .footer { text-align: center; padding: 20px; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }   </style> </head> <body>   <div class=\"card\">     <div class=\"header\">       <h2>Purist Unsolved Skincare</h2>     </div>     <div class=\"content\">       <div class=\"status-badge\">❌ Request Declined</div>       <p>Hi <b>{{ $('Lookup Booking in Sheets').first().json['Full Name'] || 'Valued Customer' }}</b>,</p>       <p>We regret to inform you that your requested appointment slot could not be confirmed due to a schedule conflict.</p>              <table class=\"details-table\">         <tr>           <td class=\"label\">Appointment ID</td>           <td class=\"value\"><b>{{ $('Lookup Booking in Sheets').first().json['Appointment ID'] }}</b></td>         </tr>         <tr>           <td class=\"label\">Requested Date</td>           <td class=\"value\">{{ $('Lookup Booking in Sheets').first().json.Date }}</td>         </tr>         <tr>           <td class=\"label\">Requested Time</td>           <td class=\"value\">{{ $('Lookup Booking in Sheets').first().json.Start }}</td>         </tr>       </table>        <p style=\"font-size: 13px; color: #555555; background: #fdf2f2; padding: 12px; border-left: 4px solid #d90429; border-radius: 4px;\">         💡 Feel free to call our voice line anytime to pick a different date or time that works for you!       </p>     </div>     <div class=\"footer\">       Purist Unsolved Skincare Clinic &bull; Mandaue City, Cebu     </div>   </div> </body> </html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        96
+      ],
+      "id": "31186115-2b9f-4f50-8b28-1a1fc5d8b410",
+      "name": "Send rejection message",
+      "webhookId": "b8c541c8-e3fa-400f-b242-0a2ef45d9d6a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XJJEGNCKxrGZvpnd",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Webhook: Admin Decision": {
+      "main": [
+        [
+          {
+            "node": "Lookup Booking in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Approval vs Rejection": {
+      "main": [
+        [
+          {
+            "node": "Create Google Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Booking REJECTED in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Booking in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Lookup Customer Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Mark Booking CONFIRMED in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Booking CONFIRMED in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Update Telegram UI: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Booking REJECTED in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Update Telegram UI: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Telegram UI: Approved": {
+      "main": [
+        [
+          {
+            "node": "Send Approval message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Telegram UI: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Send rejection message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Customer Email": {
+      "main": [
+        [
+          {
+            "node": "Route Approval vs Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8c193bed-d770-4e8a-9c05-33faba1b5cb9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01d237eb3225a90a729645bc99a829e0ccc4135790c782c74390f7e3843784a0"
+  },
+  "nodeGroups": [],
+  "id": "wUvA6KiUQcjlNpqO",
+  "tags": []
+}
